@@ -25,11 +25,13 @@
       if (originalUrl.endsWith('/info.json')) {
         return originalUrl.replace('/info.json', '/full/150,/0/default.jpg');
       }
-      const parts = originalUrl.split('/');
-      const idx = parts.findIndex(p => p === 'full' || p.match(/^\d+,/));
-      if (idx !== -1 && parts.length > idx + 1) {
-        parts[idx + 1] = '150,'; // Replace size with width=150
-        return parts.join('/');
+      if (originalUrl.endsWith('/default.jpg')) {
+        const parts = originalUrl.split('/');
+        const idx = parts.findIndex(p => p === 'full' || p.match(/^\d+,/));
+        if (idx !== -1 && parts.length > idx + 1) {
+          parts[idx + 1] = '150,'; // Replace size with width=150
+          return parts.join('/');
+        }
       }
       return originalUrl + '/full/150,/0/default.jpg';
     }

@@ -63,8 +63,8 @@
           if (manifest.sequences && manifest.sequences[0].canvases) {
             manifest.sequences[0].canvases.forEach(canvas => {
               const label = canvas.label || 'Untitled';
-              if (canvas.images && canvas.images[0].resource['@id'].service['@id']) {
-                items.push({ url: canvas.images[0].resource['@id'].service['@id'], label });
+              if (canvas.images && canvas.images[0].resource.service['@id']) {
+                items.push({ url: canvas.images[0].resource.service['@id'], label });
               }
             });
           }

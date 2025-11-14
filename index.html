@@ -8,8 +8,9 @@
     body { font-family: Arial, sans-serif; margin: 20px; }
     input { width: 80%; padding: 8px; }
     button { padding: 8px 12px; margin-left: 10px; }
-    .thumb { display: inline-block; margin: 10px; text-align: center; }
+    .thumb { display: inline-block; margin: 10px; text-align: center; width: 180px; }
     img { max-width: 150px; display: block; margin-bottom: 5px; }
+    .label { font-weight: bold; margin-bottom: 5px; display: block; }
   </style>
 </head>
 <body>
@@ -20,6 +21,19 @@
   <div id="results"></div>
 
   <script>
+    function makeThumbnailUrl(originalUrl) {
+      if (originalUrl.endsWith('/info.json')) {
+        return originalUrl.replace('/info.json', '/full/150,/0/default.jpg');
+      }
+      const parts = originalUrl.split('/');
+      const idx = parts.findIndex(p => p === 'full' || p.match(/^\d+,/));
+      if (idx !== -1 && parts.length > idx + 1) {
+        parts[idx + 1] = '150,'; // Replace size with width=150
+        return parts.join('/');
+      }
+      return originalUrl + '/full/150,/0/default.jpg';
+    }
+
     async function extractImages() {
       const url = document.getElementById('manifestUrl').value;
       const resultsDiv = document.getElementById('results');
@@ -28,17 +42,17 @@
       try {
         const response = await fetch(url);
         const manifest = await response.json();
-        const links = [];
+        const items = [];
 
-        // Detect IIIF version
         const iiif_v = manifest['@context'] && manifest['@context'].includes('presentation/2') ? 2 : 3;
 
         if (iiif_v === 3) {
           manifest.items.forEach(canvas => {
+            const label = canvas.label ? (canvas.label.en ? canvas.label.en[0] : Object.values(canvas.label)[0][0]) : 'Untitled';
             canvas.items.forEach(page => {
               page.items.forEach(annotation => {
                 if (annotation.body && annotation.body.id) {
-                  links.push(annotation.body.id);
+                  items.push({ url: annotation.body.id, label });
                 }
               });
             });
@@ -46,32 +60,31 @@
         } else {
           if (manifest.sequences && manifest.sequences[0].canvases) {
             manifest.sequences[0].canvases.forEach(canvas => {
+              const label = canvas.label || 'Untitled';
               if (canvas.images && canvas.images[0].resource['@id']) {
-                links.push(canvas.images[0].resource['@id']);
+                items.push({ url: canvas.images[0].resource['@id'], label });
               }
             });
           }
         }
 
-        if (links.length === 0) {
+        if (items.length === 0) {
           resultsDiv.innerHTML = '<p>No images found.</p>';
           return;
         }
 
         resultsDiv.innerHTML = '';
-        links.forEach(link => {
-          // Build thumbnail URL using IIIF Image API syntax
-          const thumbUrl = link.endsWith('/info.json')
-            ? link.replace('/info.json', '/full/150,/0/default.jpg')
-            : link + '/full/150,/0/default.jpg';
-
+        items.forEach(item => {
+          const thumbUrl = makeThumbnailUrl(item.url);
           const div = document.createElement('div');
           div.className = 'thumb';
           div.innerHTML = `
-            <a href="${link}" target="_blank">
+            <span class="label">${item.label}</span>
+            <a href="${item.url}" target="_blank">
               <img src="${thumbUrl}" alt="Thumbnail">
-              <small>${link}</small>
-            </a>`;
+            </a>
+            <small><a href="${item.url}" target="_blank">${item.url}</a></small>
+          `;
           resultsDiv.appendChild(div);
         });
       } catch (error) {

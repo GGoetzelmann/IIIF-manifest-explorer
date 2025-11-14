@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IIIF v3 Image Extractor</title>
+  <title>IIIF Image Extractor (v2 & v3)</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     input { width: 80%; padding: 8px; }
@@ -13,8 +13,8 @@
   </style>
 </head>
 <body>
-  <h1>IIIF v3 Image Extractor</h1>
-  <p>Enter a IIIF v3 manifest URL:</p>
+  <h1>IIIF Image Extractor (v2 & v3)</h1>
+  <p>Enter a IIIF manifest URL:</p>
   <input type="text" id="manifestUrl" placeholder="https://example.com/manifest.json">
   <button onclick="extractImages()">Extract Images</button>
   <div id="results"></div>
@@ -30,15 +30,28 @@
         const manifest = await response.json();
         const links = [];
 
-        manifest.items.forEach(canvas => {
-          canvas.items.forEach(page => {
-            page.items.forEach(annotation => {
-              if (annotation.body && annotation.body.id) {
-                links.push(annotation.body.id);
-              }
+        // Detect IIIF version
+        const iiif_v = manifest['@context'] && manifest['@context'].includes('presentation/2') ? 2 : 3;
+
+        if (iiif_v === 3) {
+          manifest.items.forEach(canvas => {
+            canvas.items.forEach(page => {
+              page.items.forEach(annotation => {
+                if (annotation.body && annotation.body.id) {
+                  links.push(annotation.body.id);
+                }
+              });
             });
           });
-        });
+        } else {
+          if (manifest.sequences && manifest.sequences[0].canvases) {
+            manifest.sequences[0].canvases.forEach(canvas => {
+              if (canvas.images && canvas.images[0].resource['@id']) {
+                links.push(canvas.images[0].resource['@id']);
+              }
+            });
+          }
+        }
 
         if (links.length === 0) {
           resultsDiv.innerHTML = '<p>No images found.</p>';
@@ -47,12 +60,18 @@
 
         resultsDiv.innerHTML = '';
         links.forEach(link => {
+          // Build thumbnail URL using IIIF Image API syntax
+          const thumbUrl = link.endsWith('/info.json')
+            ? link.replace('/info.json', '/full/150,/0/default.jpg')
+            : link + '/full/150,/0/default.jpg';
+
           const div = document.createElement('div');
           div.className = 'thumb';
-          div.innerHTML = `<a href="${link}" target="_blank">
-                              <img src="${link}" alt="thumbnail">
-                              <small>${link}</small>
-                           </a>`;
+          div.innerHTML = `
+            <a href="${link}" target="_blank">
+              <img src="${thumbUrl}" alt="Thumbnail">
+              <small>${link}</small>
+            </a>`;
           resultsDiv.appendChild(div);
         });
       } catch (error) {

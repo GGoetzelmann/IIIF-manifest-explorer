@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IIIF v3 Image Extractor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input { width: 80%; padding: 8px; }
+    button { padding: 8px 12px; margin-left: 10px; }
+    .thumb { display: inline-block; margin: 10px; text-align: center; }
+    img { max-width: 150px; display: block; margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+  <h1>IIIF v3 Image Extractor</h1>
+  <p>Enter a IIIF v3 manifest URL:</p>
+  <input type="text" id="manifestUrl" placeholder="https://example.com/manifest.json">
+  <button onclick="extractImages()">Extract Images</button>
+  <div id="results"></div>
+
+  <script>
+    async function extractImages() {
+      const url = document.getElementById('manifestUrl').value;
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<p>Loading...</p>';
+
+      try {
+        const response = await fetch(url);
+        const manifest = await response.json();
+        const links = [];
+
+        manifest.items.forEach(canvas => {
+          canvas.items.forEach(page => {
+            page.items.forEach(annotation => {
+              if (annotation.body && annotation.body.id) {
+                links.push(annotation.body.id);
+              }
+            });
+          });
+        });
+
+        if (links.length === 0) {
+          resultsDiv.innerHTML = '<p>No images found.</p>';
+          return;
+        }
+
+        resultsDiv.innerHTML = '';
+        links.forEach(link => {
+          const div = document.createElement('div');
+          div.className = 'thumb';
+          div.innerHTML = `<a href="${link}" target="_blank">
+                              <img src="${link}" alt="thumbnail">
+                              <small>${link}</small>
+                           </a>`;
+          resultsDiv.appendChild(div);
+        });
+      } catch (error) {
+        resultsDiv.innerHTML = '<p>Error loading manifest.</p>';
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
